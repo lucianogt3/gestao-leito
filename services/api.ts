@@ -2,12 +2,16 @@
 import { Server } from '../backend/server';
 import { Bed, Sector, BedStatus } from '../types';
 
-// Helper para obter o usuário logado (simulado)
+// Função para identificar quem está realizando a ação para os logs de auditoria
 const getActor = () => {
   const userStr = localStorage.getItem('current_user');
   if (userStr) {
-    const user = JSON.parse(userStr);
-    return user.username;
+    try {
+      const user = JSON.parse(userStr);
+      return user.username;
+    } catch {
+      return 'SISTEMA';
+    }
   }
   return 'SISTEMA';
 };

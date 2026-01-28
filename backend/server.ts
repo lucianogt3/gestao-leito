@@ -14,11 +14,12 @@ const DB_KEYS = {
 
 export const Server = {
   async handleRequest(method: string, route: string, body?: any): Promise<any> {
-    await new Promise(resolve => setTimeout(resolve, 350));
+    // Simula processamento de servidor com latência variável
+    await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
     const db = this.getDB();
     const actor = body?.actor || 'SISTEMA';
 
-    // SECTORS
+    // ROTEAMENTO DE SETORES
     if (route === '/sectors' && method === 'GET') return db.sectors;
     if (route === '/sectors' && method === 'POST') {
       const sector = { ...body, id: Math.random().toString(36).substr(2, 9) };
@@ -27,10 +28,10 @@ export const Server = {
       return sector;
     }
 
-    // BEDS
+    // ROTEAMENTO DE LEITOS
     if (route === '/beds' && method === 'GET') return db.beds;
     
-    // STATUS UPDATES & DISCHARGE LOGIC
+    // ATUALIZAÇÃO DE STATUS (Lógica de Alta e Limpeza)
     if (route.endsWith('/status') && method === 'PATCH') {
       const id = route.split('/')[2];
       const bedIndex = db.beds.findIndex((b: any) => b.id === id);
@@ -39,20 +40,22 @@ export const Server = {
         const oldStatus = bed.status;
         const nextStatus = body.status;
 
-        // REGRA: De OCUPADO para HIGIENIZACAO = ALTA HOSPITALAR
+        // Se sair de OCUPADO para HIGIENIZACAO, marca alta no histórico
         if (oldStatus === BedStatus.OCUPADO && nextStatus === BedStatus.HIGIENIZACAO) {
            const historyIdx = [...db.history].reverse().findIndex((h: InternmentHistory) => h.bedId === bed.id && !h.releaseDate);
            if (historyIdx !== -1) {
              const actualIdx = db.history.length - 1 - historyIdx;
              db.history[actualIdx].releaseDate = new Date().toISOString();
            }
-           this.logAudit(db, 'DISCHARGE', bed.number, actor, `Alta registrada para ${bed.patientName}.`);
+           this.logAudit(db, 'DISCHARGE', bed.number, actor, `Alta registrada para o paciente ${bed.patientName}.`);
         }
 
-        // REGRA: Limpeza de dados SÓ acontece quando o leito volta a ser LIVRE
+        // Se o leito for liberado (LIVRE), apaga dados sensíveis
         if (nextStatus === BedStatus.LIVRE) {
            this.clearBedPatientData(bed);
-           this.logAudit(db, 'CLEAN_FINISH', bed.number, actor, `Higienização concluída. Leito pronto.`);
+           this.logAudit(db, 'CLEAN_COMPLETE', bed.number, actor, `Higienização finalizada. Leito disponível.`);
+        } else if (nextStatus === BedStatus.BLOQUEADO) {
+           this.logAudit(db, 'BLOCKED', bed.number, actor, `Leito bloqueado para manutenção.`);
         }
 
         bed.status = nextStatus;
@@ -61,17 +64,24 @@ export const Server = {
       }
     }
 
-    // ADMISSION
+    // ADMISSÃO (OCUPAR LEITO)
     if (route.endsWith('/occupy') && method === 'POST') {
       const id = route.split('/')[2];
       const bedIndex = db.beds.findIndex((b: any) => b.id === id);
       if (bedIndex !== -1) {
         const bed = db.beds[bedIndex];
-        const payload = body.data;
+        const admissionData = body.data;
 
-        const updatedBed = { ...bed, ...payload, status: BedStatus.OCUPADO, occupiedAt: new Date().toISOString() };
+        // Atualiza o leito
+        const updatedBed = { 
+          ...bed, 
+          ...admissionData, 
+          status: BedStatus.OCUPADO, 
+          occupiedAt: new Date().toISOString() 
+        };
         db.beds[bedIndex] = updatedBed;
 
+        // Cria entrada no histórico
         const historyEntry: InternmentHistory = {
           id: Math.random().toString(36).substr(2, 9),
           bedId: updatedBed.id,
@@ -86,13 +96,13 @@ export const Server = {
         };
         db.history.push(historyEntry);
 
-        this.logAudit(db, 'ADMISSION', updatedBed.number, actor, `Paciente ${updatedBed.patientName} admitido.`);
+        this.logAudit(db, 'ADMISSION', updatedBed.number, actor, `Paciente ${updatedBed.patientName} admitido via NIR.`);
         this.saveDB(db);
         return updatedBed;
       }
     }
 
-    // LISTS
+    // LISTAS AUXILIARES
     if (route === '/doctors' && method === 'GET') return db.doctors;
     if (route === '/history' && method === 'GET') return db.history;
     if (route === '/audit' && method === 'GET') return db.audit;
@@ -138,7 +148,7 @@ export const Server = {
       details
     };
     db.audit.unshift(log);
-    if (db.audit.length > 200) db.audit.pop();
+    if (db.audit.length > 300) db.audit.pop();
   },
 
   clearBedPatientData(bed: Bed) {

@@ -66,7 +66,7 @@ export interface InternmentHistory {
   doctorName: string;
   admissionType: AdmissionType;
   admissionDate: string;
-  releaseDate?: string; // Adicionado para KPI de tempo de permanência
+  releaseDate?: string; // Data da alta para cálculo de LOS (Length of Stay)
   cidId?: string;
   payerId?: string;
   entitledCategory?: string;
