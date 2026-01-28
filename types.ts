@@ -37,7 +37,7 @@ export interface Procedure {
 export interface Bed {
   id: string;
   number: string;
-  category: string; // Enfermaria, Apartamento, etc.
+  category: string;
   status: BedStatus;
   patientName?: string;
   birthDate?: string;
@@ -55,7 +55,7 @@ export interface Bed {
   reservedUntil?: string;
   reservationTime?: string;
   diagnosis?: string;
-  entitledCategory?: string; // Categoria que o convênio autorizou
+  entitledCategory?: string;
 }
 
 export interface InternmentHistory {
@@ -66,10 +66,19 @@ export interface InternmentHistory {
   doctorName: string;
   admissionType: AdmissionType;
   admissionDate: string;
-  releaseDate?: string;
+  releaseDate?: string; // Adicionado para KPI de tempo de permanência
   cidId?: string;
   payerId?: string;
   entitledCategory?: string;
+}
+
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  action: string;
+  bedNumber: string;
+  user: string;
+  details: string;
 }
 
 export interface Payer {
@@ -81,19 +90,4 @@ export interface Cid {
   id: string;
   code: string;
   description: string;
-}
-
-export interface BedStats {
-  total: number;
-  livre: number;
-  ocupado: number;
-  higienizacao: number;
-  bloqueado: number;
-  reservado: number;
-  occupancyRate: number;
-  avgStayDays: number;
-  bedTurnover: number;
-  clinicoCount: number;
-  cirurgicoCount: number;
-  mismatchCount: number; // Quantos leitos estão com acomodação divergente
 }
