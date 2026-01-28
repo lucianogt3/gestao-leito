@@ -1,0 +1,7 @@
+{
+  "name": "Leitos Admin - Gestão Hospitalar",
+  "description": "Sistema avançado para gestão de leitos hospitalares, controle de status, ocupação de pacientes e indicadores gerenciais em tempo real.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
